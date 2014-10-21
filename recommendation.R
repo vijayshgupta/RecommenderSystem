@@ -54,3 +54,24 @@ clear.data.train <- cbind(data.train[, c(-3,-4)], score)
 data.train <- MergeRow(clear.data.train)
 names(data.train) <- c('user_id', 'brand_id', 'score')
 brand.user.matrix <-  cast(data.train, V1~V2, value = 'score')
+# reshape data frame to brand~user matrix
+brand.user.matrix <-  cast(data.train, brand_id~user_id, value = 'score')
+brand.user.matrix <- brand.user.matrix[ ,-1] #  remove first cloumn
+source('knn.R')
+distances <- CalDistance(brand.user.matrix) # calculate distance matrix
+# prediction evalution
+data.test.buy <- data.test[data.test$type == '1', c(-3, -4)]
+user.buy <- unique(data.test.buy$user_id)  #  users shopping during last month
+source('eval.R')
+CalRecall <- function(user.id, k = 20, n = 20){
+  # take in user.id (which is string) and return the recall
+  user.idx <- which(user.list == user.id)
+  recommendation <- brand.list[BuyRecommendation(user.idx, brand.user.matrix, 
+                                                 distances, k = k, n = n)]
+  Recall(user.id, recommendation, data.test.buy)
+}
+
+result <- vector(mode='numeric', length = length(user.buy))
+for (i in length(user.buy)){
+  result[i] <- CalRecall(user.buy[i], k = 100, n = 100)
+}
